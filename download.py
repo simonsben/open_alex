@@ -1,20 +1,25 @@
-from core import get_work, flush_cache, get_related_work_urls, export_data, cache, flatten_sets
+from core import get_work, flush_cache, get_related_work_urls, cache, flatten_sets, save_json_for_vos
+from io_utilities import load_config
 from functools import partial
 from multiprocessing.dummy import Pool
+from pathlib import Path
 
 
-NUM_STEPS = 3
-NUM_WORKERS = 5
-EMAIL = ""
-BASE_PAPER = ""
-EXPORT_FILENAME = "openalex_data.json"
+NUM_STEPS = 2
+NUM_WORKERS = 3
+EXPORT_FILENAME = Path("openalex_data.json")
 
-current_round = {BASE_PAPER}
+
+config = load_config()
+email = config.get("email", "")
+base_paper = config.get("base_paper")
+
+current_round = {base_paper}
 included_works = current_round.copy()
 next_round = []
 workers = Pool(NUM_WORKERS)
 
-work_function = partial(get_work, email=EMAIL)
+work_function = partial(get_work, email=email)
 
 for steps in range(NUM_STEPS):
     works = workers.map(work_function, current_round)
@@ -26,6 +31,6 @@ for steps in range(NUM_STEPS):
     next_round = []
 
 flush_cache()
-export_data(EXPORT_FILENAME, included_works)
+save_json_for_vos(EXPORT_FILENAME, included_works)
 
 print(f"Cache hit rate: %.2f" % cache.cache_hit_rate)

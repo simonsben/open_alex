@@ -1,8 +1,9 @@
-from json import load, dump, loads
+from json import loads
 from pathlib import Path
 from re import compile
 from typing import NoReturn, Optional, Set, Iterable, Any
 from urllib.request import urlopen
+from io_utilities import save_json, load_json
 
 
 TIMEOUT = 2
@@ -33,22 +34,20 @@ class Cache:
             return
 
         try:
-            with self._cache_path.open('r') as fl:
-                self._data = {entry["id"]: entry for entry in load(fl)}
+            raw_data = load_json(self._cache_path)
+            self._data = {entry["id"]: entry for entry in raw_data}
         except Exception as e:
             print(f"There was an issue opening {self._cache_path.name}", e)
 
     def close(self) -> NoReturn:
         if self._data:
             try:
-                with self._cache_path.open('w') as fl:
-                    dump(list(self._data.values()), fl)
+                save_json(self._cache_path, list(self._data.values()))
             except Exception as e:
                 print(f"There was an error dumping data to {self._cache_path.name}", e)
 
     def export(self, path: Path) -> NoReturn:
-        with path.open('w') as fl:
-            dump({"results": list(self._data.values())}, fl)
+        save_json(path, {"results": list(self._data.values())})
 
     @property
     def cache_hit_rate(self) -> float:
@@ -119,7 +118,8 @@ def is_not_null(work: Optional[Any]) -> bool:
     return work or False
 
 
-def export_data(filename: str, work_ids: Iterable[str] = None) -> NoReturn:
+def save_json_for_vos(filename: str, work_ids: Iterable[str] = None) -> NoReturn:
+    """Stringify and write json data to file in a format for VOS Viewer"""
     path = Path(filename)
     if not work_ids:
         cache.export(path)
@@ -127,5 +127,4 @@ def export_data(filename: str, work_ids: Iterable[str] = None) -> NoReturn:
         results = filter(is_not_null, (cache[work_id] for work_id in work_ids))
         data = {"results": list(results)}
 
-        with path.open('w') as fl:
-            dump(data, fl)
+        save_json(path, data)
