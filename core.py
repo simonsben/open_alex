@@ -3,7 +3,10 @@ from pathlib import Path
 from re import compile
 from typing import NoReturn, Optional, Set, Iterable, Any
 from urllib.request import urlopen
+from urllib.error import HTTPError
 from io_utilities import save_json, load_json
+from time import sleep
+from random import random
 
 
 TIMEOUT = 2
@@ -79,7 +82,7 @@ def join_parameters(**kwargs) -> str:
     return f"{start}{parameters}&per_page=200"
 
 
-def get_work(work_url: str, email: str, addition: bool = False) -> dict:
+def get_work(work_url: str, email: str, addition: bool = False, num_tries: int = 8) -> dict:
     cached_data = cache[work_url]
     if cached_data:
         return cached_data
@@ -87,12 +90,18 @@ def get_work(work_url: str, email: str, addition: bool = False) -> dict:
     work_url = url_pattern.sub(api_base_url, work_url, count=1)
     request_url = f"{work_url}{join_parameters(mailto=email, addition=addition)}"
 
-    try:
-        response = urlopen(request_url, timeout=TIMEOUT)
-        response_data = loads(response.read())
-    except Exception as e:
-        print(f"There was an issue getting {work_url}.", e)
-        return {}
+    for index in range(num_tries):
+        try:
+            response = urlopen(request_url, timeout=TIMEOUT)
+            response_data = loads(response.read())
+        except Exception as e:
+            if isinstance(e, HTTPError) and e.code == 429:
+                if index < num_tries - 1:
+                    sleep(2 ** index * (random() + .5))
+                    continue
+
+            print(f"There was an issue getting {work_url}. Tries: {index}", e)
+            return {}
 
     cache[work_url] = response_data
     return response_data
