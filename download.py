@@ -1,9 +1,9 @@
-from core import get_work, flush_cache, get_related_work_urls, cache, flatten_sets, save_json_for_vos
-from io_utilities import load_config
 from functools import partial
 from multiprocessing.dummy import Pool
 from pathlib import Path
 
+from core import get_work, flush_cache, get_related_work_urls, cache, flatten_sets, save_json_for_vos
+from io_utilities import load_config
 
 NUM_STEPS = 2
 NUM_WORKERS = 3

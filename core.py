@@ -1,13 +1,13 @@
 from json import loads
 from pathlib import Path
-from re import compile
-from typing import NoReturn, Optional, Set, Iterable, Any
-from urllib.request import urlopen
-from urllib.error import HTTPError
-from io_utilities import save_json, load_json
-from time import sleep
 from random import random
+from re import compile
+from time import sleep
+from typing import NoReturn, Optional, Set, Iterable, Any
+from urllib.error import HTTPError
+from urllib.request import urlopen
 
+from io_utilities import save_json, load_json
 
 TIMEOUT = 2
 MAX_PER_PAGE = 200
@@ -29,6 +29,7 @@ class Cache:
         self.load_data()
 
     def load_data(self) -> NoReturn:
+        """Load data from disk, if present"""
         if hasattr(self, "_data"):
             return
 
@@ -43,6 +44,7 @@ class Cache:
             print(f"There was an issue opening {self._cache_path.name}", e)
 
     def close(self) -> NoReturn:
+        """Close cache, flushing to disk"""
         if self._data:
             try:
                 save_json(self._cache_path, list(self._data.values()))
@@ -50,14 +52,17 @@ class Cache:
                 print(f"There was an error dumping data to {self._cache_path.name}", e)
 
     def export(self, path: Path) -> NoReturn:
+        """Export cache to disk"""
         save_json(path, {"results": list(self._data.values())})
 
     @property
     def cache_hit_rate(self) -> float:
+        """Compute the cache hit rate"""
         denominator = (self._cache_hits + self._cache_misses) or 1
         return self._cache_hits / denominator
 
     def __getitem__(self, data_name: str) -> Optional[dict]:
+        """Get item from cache and record metric"""
         data = self._data.get(data_name, None)
         if data:
             self._cache_hits += 1
@@ -67,6 +72,7 @@ class Cache:
         return data
 
     def __setitem__(self, key: str, value: str) -> NoReturn:
+        """Add item to cache"""
         self._data[key] = value
 
 
@@ -74,6 +80,7 @@ cache = Cache()
 
 
 def join_parameters(**kwargs) -> str:
+    """Join parameters before appending to URL, deprecated"""
     if not kwargs:
         print("WARNING: parameters passed.")
 
@@ -83,6 +90,7 @@ def join_parameters(**kwargs) -> str:
 
 
 def get_work(work_url: str, email: str, addition: bool = False, num_tries: int = 8) -> dict:
+    """Download work, with retry"""
     cached_data = cache[work_url]
     if cached_data:
         return cached_data
@@ -108,6 +116,7 @@ def get_work(work_url: str, email: str, addition: bool = False, num_tries: int =
 
 
 def flatten_sets(sets: Iterable[Set[str]]) -> Set[str]:
+    """Flatten a list of sets into a single set"""
     data = set()
     for _set in sets:
         data = data.union(_set)
@@ -116,14 +125,17 @@ def flatten_sets(sets: Iterable[Set[str]]) -> Set[str]:
 
 
 def get_related_work_urls(work: dict) -> Set[str]:
+    """Strip URLs from OpenAlex work"""
     return flatten_sets((set(work.get(key, [])) for key in RELATED_KEYS))
 
 
 def flush_cache() -> NoReturn:
+    """Flush cache to disk"""
     cache.close()
 
 
 def is_not_null(work: Optional[Any]) -> bool:
+    """Return whether work is null, used for filtering"""
     return work or False
 
 
