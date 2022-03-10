@@ -1,11 +1,10 @@
-from json import loads
 from pathlib import Path
 from random import random
 from re import compile
 from time import sleep
 from typing import NoReturn, Optional, Set, Iterable, Any
-from urllib.error import HTTPError
-from urllib.request import urlopen
+
+from requests import get
 
 from io_utilities import save_json, load_json
 
@@ -79,38 +78,26 @@ class Cache:
 cache = Cache()
 
 
-def join_parameters(**kwargs) -> str:
-    """Join parameters before appending to URL, deprecated"""
-    if not kwargs:
-        print("WARNING: parameters passed.")
-
-    start = "?" if not kwargs.pop("addition", False) else "&"
-    parameters = "&".join([f"{key}={value}" for key, value in kwargs.items()])
-    return f"{start}{parameters}&per_page=200"
-
-
-def get_work(work_url: str, email: str, addition: bool = False, num_tries: int = 8) -> dict:
+def get_work(work_url: str, email: str, num_tries: int = 8) -> dict:
     """Download work, with retry"""
     cached_data = cache[work_url]
     if cached_data:
         return cached_data
 
     work_url = url_pattern.sub(api_base_url, work_url, count=1)
-    request_url = f"{work_url}{join_parameters(mailto=email, addition=addition)}"
+    parameters = {"mailto": email, "per_page": MAX_PER_PAGE}
 
     for index in range(num_tries):
-        try:
-            response = urlopen(request_url, timeout=TIMEOUT)
-            response_data = loads(response.read())
-        except Exception as e:
-            if isinstance(e, HTTPError) and e.code == 429:
-                if index < num_tries - 1:
-                    sleep(2 ** index * (random() + .5))
-                    continue
+        response = get(work_url, params=parameters, timeout=TIMEOUT)
+        if not response.ok:
+            if response.status_code == 429 and index < num_tries - 1:
+                sleep(2 ** index * (random() + .5))
+                continue
 
-            print(f"There was an issue getting {work_url}. Tries: {index}", e)
+            print(f"There was an issue getting {work_url}, tries: {index}, error code: {response.status_code}")
             return {}
 
+    response_data = response.json()
     cache[work_url] = response_data
     return response_data
 
