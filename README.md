@@ -19,6 +19,6 @@ To start using the code
 * Make a virtual environment with `python -m venv .venv`
 * Activate the environment with `source .venv/bin/activate`
 * Install the requirements with `pip install -r requirements.txt`
-* Add the URL for your base paper and email into the `download.py` file
+* Create a `config.json` file based on `config.sample.json`
 * Execute the script with `python -m download`
 
